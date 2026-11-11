@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SCENARIO</title>
+<link rel="stylesheet" href="../style.css">
+<script>
+window.onerror = function (m, s, l, c, e) {
+  document.title = 'ERR: ' + m + ' @' + s + ':' + l;
+  return false;
+};
+</script>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game" width="960" height="540"></canvas>
+</div>
+<script src="../js/util.js"></script>
+<script src="../js/audio.js"></script>
+<script src="../js/sprites.js"></script>
+<script src="../js/entities.js"></script>
+<script src="../js/game.js"></script>
+<script>
+// --- scenario driver: sets up a specific game state for screenshots ---
+(function () {
+  const q = new URLSearchParams(location.search);
+  const scene = q.get('scene') || 'title';
+  function aimAt(wx, wy) {
+    G.input.mx = wx - G.game.cam.x;
+    G.input.my = wy - G.game.cam.y;
+  }
+  setTimeout(function () {
+    if (scene === 'title') return;
+    G.game.reset();
+    G.game.player.giveWeapon('shotgun');
+    G.game.player.giveWeapon('smg');
+    G.game.player.giveWeapon('rifle');
+    if (scene === 'play') {
+      G.game.startWave(4);
+      G.game.score = 3420;
+      G.game.combo = 12; G.game.comboT = 2.4;
+      G.game.player.hp = 68;
+      G.game.player.selectWeapon('shotgun');
+      G.game.player.x = 800; G.game.player.y = 620;
+      G.game.cam.x = 320; G.game.cam.y = 340;
+      for (let i = 0; i < 6; i++) {
+        G.game.spawnZombie(['shambler', 'runner', 'spitter', 'shambler', 'runner', 'brute'][i],
+          1050 + (i % 3) * 80, 820 + Math.floor(i / 3) * 90);
+      }
+      for (const z of G.game.zombies) { z.state = 'walk'; z.t = 1; }
+      G.game.pickups.push(new Pickup(900, 760, 'ammo'));
+      G.game.pickups.push(new Pickup(1240, 900, 'crate'));
+      G.game.pickups.push(new Pickup(700, 980, 'hp'));
+      aimAt(1120, 840);
+    } else if (scene === 'boss1' || scene === 'boss3') {
+      G.game.startWave(5);
+      const b = G.game.boss;
+      if (scene === 'boss3') {
+        b.phase = 3; b.hp = b.maxHp * 0.25; b.state = 'idle'; b.t = 0.4; b.invuln = false;
+      } else {
+        b.t = 0.05; // nearly risen
+      }
+      // stand near the boss so the camera frames the tombstone
+      G.game.player.x = b.x + 300; G.game.player.y = b.y + 60;
+      G.game.cam.x = U.clamp(b.x - 200, 0, G.game.world.w - 960);
+      G.game.cam.y = U.clamp(b.y - 210, 0, G.game.world.h - 540);
+      G.game.player.hp = 55;
+      G.game.score = 7200; G.game.combo = 9; G.game.comboT = 2;
+      for (let i = 0; i < 4; i++) {
+        G.game.spawnZombie('runner', b.x + 90 + i * 30, b.y + 90 + i * 20);
+      }
+      G.game.spawnZombie('shambler', b.x + 380, b.y + 200);
+      for (const z of G.game.zombies) { z.state = 'walk'; z.t = 1; }
+      aimAt(b.x, b.y);
+      // make some boss hazards visible for the shot
+      for (let i = 0; i < 6; i++) {
+        G.game.ebullets.push(new Bullet(b.x, b.y - 10, i * 1.1, 60, 12, { hostile: true, sprite: G.SPR.bone, r: 6, life: 8, spin: 8 }));
+      }
+      G.game.player.iframes = 0;
+    } else if (scene === 'upgrade') {
+      G.game.score = 5100;
+      G.game.openUpgrades();
+    }
+  }, 120);
+})();
+</script>
+</body>
+</html>
